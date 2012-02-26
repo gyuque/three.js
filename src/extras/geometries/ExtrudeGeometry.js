@@ -595,7 +595,6 @@ THREE.ExtrudeGeometry.prototype.addShape = function( shape, options ) {
 	// Create faces for the z-sides of the shape
 
 	function sidewalls( contour ) {
-		"use strict";
 		var u_list;
 		// Calculate texture u coordinates
 		if (UVRule == THREE.ExtrudeGeometry.UVRULE_CYLINDER) {
