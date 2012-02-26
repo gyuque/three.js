@@ -70,6 +70,9 @@ THREE.ExtrudeGeometry = function( shapes, options ) {
 THREE.ExtrudeGeometry.prototype = new THREE.Geometry();
 THREE.ExtrudeGeometry.prototype.constructor = THREE.ExtrudeGeometry;
 
+THREE.ExtrudeGeometry.UVRULE_DEFAULT  = 1;
+THREE.ExtrudeGeometry.UVRULE_CYLINDER = 2;
+THREE.ExtrudeGeometry.UVRULE_CYLINDER_EQUALLY_U = 3;
 
 THREE.ExtrudeGeometry.prototype.addShape = function( shape, options ) {
 
@@ -94,6 +97,7 @@ THREE.ExtrudeGeometry.prototype.addShape = function( shape, options ) {
 
 	var material = options.material;
 	var extrudeMaterial = options.extrudeMaterial;
+	var UVRule = options.UVRule || THREE.ExtrudeGeometry.UVRULE_DEFAULT;
 
 	var shapebb = this.shapebb;
 	//shapebb = shape.getBoundingBox();
@@ -568,7 +572,7 @@ THREE.ExtrudeGeometry.prototype.addShape = function( shape, options ) {
 
 	}
 
-	var tmpPt;
+	var tmpPt, tmpPt2;
 	var j, k, l, m;
 
 	var layeroffset = 0;
@@ -591,6 +595,31 @@ THREE.ExtrudeGeometry.prototype.addShape = function( shape, options ) {
 	// Create faces for the z-sides of the shape
 
 	function sidewalls( contour ) {
+		"use strict";
+		var u_list;
+		// Calculate texture u coordinates
+		if (UVRule == THREE.ExtrudeGeometry.UVRULE_CYLINDER) {
+			u_list = [];
+			var allLen = 0;
+			for (i = 0;i < contour.length;i++) {
+				tmpPt = contour[ i ];
+				tmpPt2 = contour[ (i+1) % contour.length ];
+				var dx = tmpPt.x - tmpPt2.x;
+				var dy = tmpPt.y - tmpPt2.y;
+				var edgeLen = Math.sqrt(dx*dx + dy*dy);
+				u_list.push( allLen );
+				allLen += edgeLen;
+			}
+			
+			for (i = 0;i < contour.length;i++) {
+				u_list[i] /= allLen;
+			}
+		} else if (UVRule == THREE.ExtrudeGeometry.UVRULE_CYLINDER_EQUALLY_U) {
+			u_list = new Array(contour.length);
+			for (i = 0;i < contour.length;i++) {
+				u_list[i] = i / contour.length;
+			}
+		}
 
 		i = contour.length;
 
@@ -625,8 +654,16 @@ THREE.ExtrudeGeometry.prototype.addShape = function( shape, options ) {
 
 					var ztol = ( amount + bevelThickness * 2 );
 
-					var u1 = ( scope.vertices[ a ].position.z + bevelThickness ) / ztol;
-					var u2 = ( scope.vertices[ d ].position.z + bevelThickness ) / ztol;
+					var u1, u2;
+					if (UVRule == THREE.ExtrudeGeometry.UVRULE_CYLINDER ||
+					    UVRule == THREE.ExtrudeGeometry.UVRULE_CYLINDER_EQUALLY_U) {
+						u1 = u_list[j];
+						u2 = u_list[k];
+						if (u1 < u2) {u1 += 1.0;}
+					} else {
+						u1 = ( scope.vertices[ a ].position.z + bevelThickness ) / ztol;
+						u2 = ( scope.vertices[ d ].position.z + bevelThickness ) / ztol;
+					}
 
 					//console.log(vy1, vy2);
 
